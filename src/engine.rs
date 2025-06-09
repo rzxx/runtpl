@@ -4,7 +4,7 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde_json::{Map, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 // Тип для указателя на встроенную функцию
 type BuiltInFns = fn(&Map<String, Value>) -> Result<Value, Value>;
@@ -24,6 +24,13 @@ lazy_static! {
         let mut m = HashMap::new();
         m.insert("files", builtin_fns::files as BuiltInFns);
         m
+    };
+    static ref RESERVED_WORDS: HashSet<&'static str> = {
+        let mut s = HashSet::new();
+        s.insert("endfor");
+        s.insert("in");
+        // 'foreach' не нужно, т.к. RE_VAR его не поймает
+        s
     };
 }
 
@@ -127,6 +134,60 @@ fn render_variables(template: &str, context: &Value) -> String {
                 .unwrap_or_default()
         })
         .into_owned()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VarUsage {
+    /// Обычная переменная: {{ my_var }}
+    Simple,
+    /// Коллекция для цикла: {{ foreach item in my_collection }}
+    Collection,
+}
+
+/// Извлекает все уникальные переменные и определяет их тип использования.
+pub fn extract_variables(template: &str) -> HashMap<String, VarUsage> {
+    // ПРОХОД 1: Собрать все переменные, определяемые внутри циклов (локальные переменные).
+    // Например, `team` в `foreach team in ...` и `member` в `foreach member in ...`
+    let loop_item_vars: HashSet<String> = RE_FOREACH
+        .captures_iter(template)
+        .map(|caps| caps[2].to_string())
+        .collect();
+
+    // ПРОХОД 2: Собрать все глобальные переменные, которые должен предоставить пользователь.
+    let mut variables = HashMap::new();
+
+    // 2.1. Анализируем источники для циклов.
+    for caps in RE_FOREACH.captures_iter(template) {
+        let source_name = &caps[3];
+        let is_function_call = caps.get(4).is_some();
+
+        if !is_function_call && !BUILTIN_FNS.contains_key(source_name) {
+            if let Some(base_var) = source_name.split('.').next() {
+                // КЛЮЧЕВАЯ ПРОВЕРКА: добавляем переменную-источник, только если
+                // она сама не является локальной переменной из другого цикла.
+                if !loop_item_vars.contains(base_var) {
+                    variables.insert(base_var.to_string(), VarUsage::Collection);
+                }
+            }
+        }
+    }
+
+    // 2.2. Анализируем простые переменные.
+    for caps in RE_VAR.captures_iter(template) {
+        if let Some(base_var) = caps[1].split('.').next() {
+            let base_var_str = base_var.to_string();
+
+            // Пропускаем, если это зарезервированное слово ИЛИ локальная переменная цикла.
+            if RESERVED_WORDS.contains(base_var) || loop_item_vars.contains(&base_var_str) {
+                continue;
+            }
+
+            // Добавляем, только если ее еще нет (чтобы не перезаписать тип Collection на Simple).
+            variables.entry(base_var_str).or_insert(VarUsage::Simple);
+        }
+    }
+
+    variables
 }
 
 // --- Главная функция render (новая рекурсивная реализация) ---

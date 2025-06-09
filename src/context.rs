@@ -60,4 +60,17 @@ impl Context {
 
         Ok(context)
     }
+
+    pub fn from_interactive_json(json_str: &str) -> Result<Self, AppError> {
+        let value: Value = serde_json::from_str(json_str)?;
+        match value {
+            Value::Object(map) => {
+                let hash_map = map.into_iter().collect();
+                Ok(Context(hash_map))
+            }
+            _ => Err(AppError::JsonParse(
+                "Root of the data file must be a JSON object.".to_string(),
+            )),
+        }
+    }
 }
