@@ -2,15 +2,15 @@
     {
         "name": "Alpha",
         "members": [
-            "Анна",
-            "Борис"
+            "Alice",
+            "Alex"
         ]
     },
     {
         "name": "Beta",
         "members": [
-            "Виктор",
-            "Галина"
+            "Ben",
+            "Bob"
         ]
     }
 ]

@@ -1,12 +1,12 @@
-Список файлов в директориях
+List of files in directories
 {{foreach path in sourcesList}}
  - {{path}}
 {{endfor}}
 
 {{foreach file in files(source: sourcesList, recursive: true, exclude_paths: ["target", ".git"])}}
 
---- Файл: {{file.path}} ---
+--- File: {{file.path}} ---
 {{file.content}}
---- Конец файла: {{file.name}} ---
+--- End of file: {{file.name}} ---
 
 {{endfor}}

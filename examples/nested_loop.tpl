@@ -1,7 +1,7 @@
-Отчет по проекту {{ project }}:
+Project report for {{ project }}:
 {{foreach team in teams}}
-Команда: {{ team.name }}
-  Участники:
+Team: {{ team.name }}
+  Members:
     {{foreach member in team.members}}
     - {{ member }}
     {{endfor}}

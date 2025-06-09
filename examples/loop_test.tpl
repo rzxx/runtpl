@@ -1,5 +1,5 @@
-Список пользователей:
+Users list:
 
-{{foreach user in user_list}} - Пользователь: {{ user }}.
+{{foreach user in user_list}} - User: {{ user }}.
 {{endfor}}
-Проект: {{ project_name }}.
+Project: {{ project_name }}.
