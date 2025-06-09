@@ -23,13 +23,34 @@ A powerful command-line interface (CLI) tool for automating the creation of AI p
 
 * [Rust programming language](https://www.rust-lang.org/tools/install) (Rustup is recommended).
 
-### Install from Cargo
+### Building and Installing from Source
+
+Since `runtpl` is not on Crates.io, you'll need to install it directly from its source code.
+
+1. **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/rzxx/runtpl.git
+    cd runtpl
+    ```
+
+2. **Install the CLI tool:**
+
+    ```bash
+    cargo install --path .
+    ```
+
+    This command compiles the project and places the `runtpl` executable in your Cargo bin directory (usually `~/.cargo/bin`), which should be in your system's PATH.
+
+    * To update `runtpl` later, `cd` back into the cloned directory and run `git pull` followed by `cargo install --path . --force`.
+
+### Installing directly from Git (Convenience)
+
+If you just want the latest version from the default branch and don't plan to develop on it locally, you can install it directly:
 
 ```bash
-cargo install runtpl
+cargo install --git https://github.com/rzxx/runtpl.git
 ```
-
-This will compile `runtpl` and place the executable in your Cargo bin directory (usually `~/.cargo/bin`), which should be in your system's PATH.
 
 ## Usage
 
