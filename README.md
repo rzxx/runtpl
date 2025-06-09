@@ -117,7 +117,7 @@ Manages your globally stored templates.
 Variables are enclosed in double curly braces: `{{ variable_name }}`.
 You can access nested properties using dot notation: `{{ object.property }}`.
 
-```liquid
+```tpl
 Hello, {{ name }}!
 Your description: {{ project.description }}
 ```
@@ -135,7 +135,7 @@ Syntax: `{{foreach item_variable in collection_source}} ... {{endfor}}`
 
 If `my_list` is `["apple", "banana", "cherry"]`:
 
-```liquid
+```tpl
 My favorite fruits:
 {{foreach fruit in my_list}}
 - {{ fruit }}
@@ -146,7 +146,7 @@ My favorite fruits:
 
 If `teams` is `[{"name": "Alpha", "members": ["Alice", "Bob"]}, {"name": "Beta", "members": ["Charlie"]}]`:
 
-```liquid
+```tpl
 Project Report for {{ project_name }}:
 {{foreach team in teams}}
 Team: {{ team.name }}
@@ -161,7 +161,7 @@ Team: {{ team.name }}
 
 The `files` built-in function (see below) returns a list of file objects.
 
-```liquid
+```tpl
 Files in the source directory:
 {{foreach file in files(source: ["./src", "./docs"], recursive: true, exclude_paths: ["target", ".git"])}}
 
