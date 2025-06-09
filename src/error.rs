@@ -22,11 +22,10 @@ impl From<serde_json::Error> for AppError {
     }
 }
 
-// Реализации для красивого отображения ошибок
 impl std::fmt::Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            AppError::InvalidArgument(msg) => write!(f, "Invalid argument: {}", msg),
+            AppError::InvalidArgument(msg) => write!(f, "{}", msg),
             AppError::Io(err) => write!(f, "IO Error: {}", err),
             AppError::Editor(msg) => write!(f, "Editor Error: {}", msg),
             AppError::JsonParse(msg) => write!(f, "JSON Parse Error: {}", msg),

@@ -42,4 +42,6 @@ pub enum TemplateCommands {
     New { name: String },
     /// Edit an existing template
     Edit { name: String },
+    /// Remove an existing template
+    Remove { name: String },
 }

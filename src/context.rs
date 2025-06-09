@@ -24,7 +24,6 @@ impl Context {
                 let mut buffer = String::new();
                 io::stdin().read_to_string(&mut buffer)?;
                 let normalized = normalize_string(&buffer);
-                // Пытаемся распарсить как JSON, если не вышло - считаем просто строкой
                 let value =
                     serde_json::from_str(&normalized).unwrap_or_else(|_| Value::String(normalized));
                 context.0.insert(key.to_string(), value);
@@ -36,11 +35,8 @@ impl Context {
                     serde_json::from_str(&normalized).unwrap_or_else(|_| Value::String(normalized));
                 context.0.insert(key.to_string(), value);
             } else if let Some((key, value_str)) = arg.split_once('=') {
-                // --- НОВАЯ, УПРОЩЕННАЯ ЛОГИКА ДЛЯ key=value ---
                 let normalized = normalize_string(value_str);
 
-                // Если строка содержит запятые, считаем ее простым массивом строк.
-                // Иначе - это просто строка.
                 if normalized.contains(',') {
                     let items: Vec<Value> = normalized
                         .split(',')

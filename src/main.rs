@@ -3,9 +3,10 @@ mod cli;
 mod context;
 mod engine;
 mod error;
+mod template_manager;
 
 use clap::Parser;
-use cli::{Cli, Commands};
+use cli::{Cli, Commands, TemplateCommands};
 use context::Context;
 use engine::VarUsage;
 use error::AppError;
@@ -13,9 +14,9 @@ use serde_json::{Map, Value};
 use std::fs;
 use std::io::Write;
 
-fn main() -> Result<(), AppError> {
+fn main() -> Result<(), ()> {
     let cli = Cli::parse();
-    // Обернем логику в Result, чтобы красиво обработать ошибки
+
     let result = match cli.command {
         Commands::Run {
             template_name,
@@ -23,32 +24,35 @@ fn main() -> Result<(), AppError> {
             interactive,
             no_copy,
         } => run_command(template_name, args, interactive, no_copy),
-        Commands::Template { command } => {
-            println!(
-                "Template command selected: {:?} (Not implemented yet)",
-                command
-            );
-            Ok(())
-        }
+        Commands::Template { command } => match command {
+            TemplateCommands::List => template_manager::list_templates(),
+            TemplateCommands::New { name } => template_manager::new_template(&name),
+            TemplateCommands::Edit { name } => template_manager::edit_template(&name),
+            TemplateCommands::Remove { name } => template_manager::remove_template(&name),
+        },
     };
 
-    // Специальная обработка ошибки InteractiveAbort
     if let Err(AppError::InteractiveAbort(msg)) = result {
         println!("{}", msg);
         return Ok(());
     }
 
-    result
+    if let Err(e) = result {
+        eprintln!("\x1b[31;1mError:\x1b[0m {}", e);
+        std::process::exit(1);
+    }
+
+    Ok(())
 }
 
-// Выносим логику команды в отдельную функцию
 fn run_command(
     template_name: String,
     args: Vec<String>,
     interactive: bool,
     no_copy: bool,
 ) -> Result<(), AppError> {
-    let template_content = fs::read_to_string(&template_name)?;
+    let template_path = template_manager::resolve_template_path(&template_name)?;
+    let template_content = fs::read_to_string(&template_path)?;
 
     let context = if interactive {
         if !args.is_empty() {
@@ -63,27 +67,18 @@ fn run_command(
 
     match engine::render(&template_content, &context) {
         Ok(result) => {
-            // Печатаем результат в stdout в любом случае
             print!("{}", result);
 
-            // Если флаг --no-copy НЕ был передан
             if !no_copy {
-                // Пытаемся получить доступ к буферу обмена
                 match arboard::Clipboard::new() {
                     Ok(mut clipboard) => {
-                        // Пытаемся записать текст
                         if let Err(e) = clipboard.set_text(result) {
-                            // Если не получилось, выводим предупреждение в stderr,
-                            // но не прерываем программу с ошибкой.
-                            // Это важно, т.к. копирование - второстепенная операция.
                             eprintln!("\n\nWarning: Could not copy to clipboard: {}", e);
                         } else {
-                            // Сообщаем пользователю об успехе
                             eprintln!("\n\n(Result copied to clipboard)");
                         }
                     }
                     Err(e) => {
-                        // То же самое, если буфер обмена недоступен (например, в CI/CD)
                         eprintln!("\n\nWarning: Could not access clipboard: {}", e);
                     }
                 }
@@ -95,18 +90,16 @@ fn run_command(
     Ok(())
 }
 
-/// НОВАЯ РЕКУРСИВНАЯ ФУНКЦИЯ для построения JSON-значения
 fn build_json_value(usage: &VarUsage) -> Value {
     match usage {
         VarUsage::Simple => Value::String("".into()),
         VarUsage::CollectionOfSimple => Value::Array(vec![]),
         VarUsage::CollectionOfObjects(structure) => {
-            // Создаем один объект-пример на основе структуры
             let mut object_scaffold = Map::new();
             for (key, inner_usage) in structure {
                 object_scaffold.insert(key.clone(), build_json_value(inner_usage));
             }
-            // Помещаем этот объект в массив
+
             Value::Array(vec![Value::Object(object_scaffold)])
         }
     }
@@ -122,16 +115,12 @@ fn run_interactive_mode(template_content: &str) -> Result<Context, AppError> {
         return Ok(Context::default());
     }
 
-    // Создаем JSON, используя нашу новую рекурсивную функцию
     let mut data_map = Map::new();
     println!("Please fill in the following variables in the editor:");
     for (var, usage) in &variables {
-        println!("- {}", var); // Упростили вывод, т.к. структура видна в JSON
+        println!("- {}", var);
         data_map.insert(var.clone(), build_json_value(usage));
     }
-
-    // ... остальная часть функции (создание файла, вызов редактора, проверка на изменения)
-    // остается БЕЗ ИЗМЕНЕНИЙ ...
 
     let mut scaffold_map = Map::new();
     scaffold_map.insert(
