@@ -7,8 +7,6 @@ pub enum AppError {
     Io(io::Error),
     Editor(String),
     JsonParse(String),
-    // НОВЫЙ ВАРИАНТ
-    // Используется для штатного прерывания, когда пользователь не внес изменений
     InteractiveAbort(String),
 }
 
@@ -32,7 +30,6 @@ impl std::fmt::Display for AppError {
             AppError::Io(err) => write!(f, "IO Error: {}", err),
             AppError::Editor(msg) => write!(f, "Editor Error: {}", msg),
             AppError::JsonParse(msg) => write!(f, "JSON Parse Error: {}", msg),
-            // Для штатного прерывания мы не будем выводить префикс "Error:"
             AppError::InteractiveAbort(msg) => write!(f, "{}", msg),
         }
     }

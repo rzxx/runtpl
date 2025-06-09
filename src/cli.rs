@@ -22,6 +22,10 @@ pub enum Commands {
         /// Enter interactive mode to fill variables
         #[arg(short, long)]
         interactive: bool,
+
+        /// Do not copy the output to the clipboard
+        #[arg(short = 'n', long = "no-copy")]
+        no_copy: bool,
     },
     /// Manage templates
     Template {

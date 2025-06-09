@@ -136,54 +136,149 @@ fn render_variables(template: &str, context: &Value) -> String {
         .into_owned()
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// НОВЫЙ, БОЛЕЕ МОЩНЫЙ ENUM ДЛЯ ОПИСАНИЯ ПЕРЕМЕННЫХ
+#[derive(Debug, Clone, PartialEq)]
 pub enum VarUsage {
-    /// Обычная переменная: {{ my_var }}
+    /// Простая переменная: {{ var }} -> "..."
     Simple,
-    /// Коллекция для цикла: {{ foreach item in my_collection }}
-    Collection,
+    /// Массив простых значений: {{ foreach item in my_list }} {{ item }} {{ endfor }} -> [...]
+    CollectionOfSimple,
+    /// Массив объектов: {{ foreach item in my_list }} {{ item.name }} {{ endfor }}
+    /// Хранит структуру объекта.
+    CollectionOfObjects(HashMap<String, VarUsage>),
 }
 
-/// Извлекает все уникальные переменные и определяет их тип использования.
-pub fn extract_variables(template: &str) -> HashMap<String, VarUsage> {
-    // ПРОХОД 1: Собрать все переменные, определяемые внутри циклов (локальные переменные).
-    // Например, `team` в `foreach team in ...` и `member` в `foreach member in ...`
-    let loop_item_vars: HashSet<String> = RE_FOREACH
-        .captures_iter(template)
-        .map(|caps| caps[2].to_string())
-        .collect();
+fn analyze_object_structure(
+    loop_body: &str,
+    item_var: &str,
+    all_loop_vars: &HashSet<String>, // Все переменные цикла из всего шаблона
+) -> HashMap<String, VarUsage> {
+    let mut structure = HashMap::new();
 
-    // ПРОХОД 2: Собрать все глобальные переменные, которые должен предоставить пользователь.
-    let mut variables = HashMap::new();
+    // 1. Ищем вложенные циклы, источником которых является свойство нашего объекта.
+    // Пример: {{ foreach member in team.members }}
+    for caps in RE_FOREACH.captures_iter(loop_body) {
+        let source_path = &caps[3];
+        // Проверяем, что источник - это свойство нашего item_var (e.g., "team.members")
+        if let Some(prop_name) = source_path.strip_prefix(&format!("{}.", item_var)) {
+            let inner_loop_item_var = &caps[2];
+            let inner_loop_body = find_loop_body(loop_body, &caps[0]);
 
-    // 2.1. Анализируем источники для циклов.
-    for caps in RE_FOREACH.captures_iter(template) {
-        let source_name = &caps[3];
-        let is_function_call = caps.get(4).is_some();
+            // Рекурсивно анализируем структуру вложенного объекта
+            let sub_structure =
+                analyze_object_structure(&inner_loop_body, inner_loop_item_var, all_loop_vars);
 
-        if !is_function_call && !BUILTIN_FNS.contains_key(source_name) {
-            if let Some(base_var) = source_name.split('.').next() {
-                // КЛЮЧЕВАЯ ПРОВЕРКА: добавляем переменную-источник, только если
-                // она сама не является локальной переменной из другого цикла.
-                if !loop_item_vars.contains(base_var) {
-                    variables.insert(base_var.to_string(), VarUsage::Collection);
-                }
+            let usage = if sub_structure.is_empty() {
+                VarUsage::CollectionOfSimple
+            } else {
+                VarUsage::CollectionOfObjects(sub_structure)
+            };
+            structure.insert(prop_name.to_string(), usage);
+        }
+    }
+
+    // 2. Ищем простые свойства объекта.
+    // Пример: {{ team.name }}
+    for caps in RE_VAR.captures_iter(loop_body) {
+        let path = &caps[1];
+        if let Some(prop_name) = path.strip_prefix(&format!("{}.", item_var)) {
+            // Убедимся, что это не свойство какой-то другой, более вложенной переменной.
+            // Например, в {{ team.manager.name }} свойство 'manager' относится к 'team',
+            // а 'name' - к 'manager', а не к 'team'. Мы берем только первый сегмент.
+            if let Some(first_prop) = prop_name.split('.').next() {
+                structure
+                    .entry(first_prop.to_string())
+                    .or_insert(VarUsage::Simple);
             }
         }
     }
 
-    // 2.2. Анализируем простые переменные.
-    for caps in RE_VAR.captures_iter(template) {
-        if let Some(base_var) = caps[1].split('.').next() {
-            let base_var_str = base_var.to_string();
+    structure
+}
 
-            // Пропускаем, если это зарезервированное слово ИЛИ локальная переменная цикла.
-            if RESERVED_WORDS.contains(base_var) || loop_item_vars.contains(&base_var_str) {
+/// Хелпер для поиска тела цикла по его открывающему тегу.
+/// Нужен, чтобы не дублировать код поиска `endfor`.
+fn find_loop_body(template_chunk: &str, start_tag: &str) -> String {
+    if let Some(start_match) = RE_FOREACH.find(template_chunk) {
+        if start_match.as_str() != start_tag {
+            // Это не тот цикл, который мы ищем
+            return "".to_string();
+        }
+
+        let search_start_pos = start_match.end();
+        let mut nesting_level = 0;
+
+        for (offset, tag_type) in RE_FOREACH
+            .find_iter(&template_chunk[search_start_pos..])
+            .map(|m| (m.start(), "start"))
+            .chain(
+                RE_ENDFOR
+                    .find_iter(&template_chunk[search_start_pos..])
+                    .map(|m| (m.start(), "end")),
+            )
+            .sorted_by_key(|(offset, _)| *offset)
+        {
+            if tag_type == "start" {
+                nesting_level += 1;
+            } else if nesting_level == 0 {
+                let end_pos = search_start_pos + offset;
+                return template_chunk[search_start_pos..end_pos].to_string();
+            } else {
+                nesting_level -= 1;
+            }
+        }
+    }
+    "".to_string()
+}
+
+/// Точка входа, переписанная для использования нового подхода.
+pub fn extract_variables(template: &str) -> HashMap<String, VarUsage> {
+    let mut variables = HashMap::new();
+
+    // ШАГ 1: Найти ВСЕ переменные, объявленные в циклах, чтобы игнорировать их глобально.
+    let all_loop_vars: HashSet<String> = RE_FOREACH
+        .captures_iter(template)
+        .map(|caps| caps[2].to_string())
+        .collect();
+
+    // ШАГ 2: Обработать циклы верхнего уровня.
+    for caps in RE_FOREACH.captures_iter(template) {
+        let source_path = &caps[3];
+        if let Some(base_var) = source_path.split('.').next() {
+            // Пропускаем, если источник - это свойство другой переменной цикла
+            if all_loop_vars.contains(base_var) {
                 continue;
             }
 
-            // Добавляем, только если ее еще нет (чтобы не перезаписать тип Collection на Simple).
-            variables.entry(base_var_str).or_insert(VarUsage::Simple);
+            // Пропускаем встроенные функции
+            let is_function_call = caps.get(4).is_some();
+            if is_function_call || BUILTIN_FNS.contains_key(source_path) {
+                continue;
+            }
+
+            let item_var = &caps[2];
+            let loop_body = find_loop_body(template, caps.get(0).unwrap().as_str());
+
+            // Используем новую функцию для анализа структуры
+            let structure = analyze_object_structure(&loop_body, item_var, &all_loop_vars);
+
+            let usage = if structure.is_empty() {
+                VarUsage::CollectionOfSimple
+            } else {
+                VarUsage::CollectionOfObjects(structure)
+            };
+            variables.insert(base_var.to_string(), usage);
+        }
+    }
+
+    // ШАГ 3: Найти простые переменные верхнего уровня.
+    for caps in RE_VAR.captures_iter(template) {
+        if let Some(base_var) = caps[1].split('.').next() {
+            if !RESERVED_WORDS.contains(base_var) && !all_loop_vars.contains(base_var) {
+                variables
+                    .entry(base_var.to_string())
+                    .or_insert(VarUsage::Simple);
+            }
         }
     }
 
