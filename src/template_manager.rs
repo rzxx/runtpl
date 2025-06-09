@@ -11,7 +11,7 @@ fn get_template_dir() -> Result<PathBuf, AppError> {
     let config_dir = dirs::config_dir().ok_or_else(|| {
         AppError::Editor("Could not find a valid configuration directory.".to_string())
     })?;
-    let app_dir = config_dir.join("rtmpl");
+    let app_dir = config_dir.join("runtpl");
     let templates_dir = app_dir.join("templates");
 
     if !templates_dir.exists() {
@@ -56,7 +56,7 @@ pub fn list_templates() -> Result<(), AppError> {
     let entries: Vec<_> = fs::read_dir(dir)?.collect();
 
     if entries.is_empty() {
-        println!("  (No templates found. Use 'rtmpl template new <name>' to create one.)");
+        println!("  (No templates found. Use 'runtpl template new <name>' to create one.)");
         return Ok(());
     }
 
@@ -76,7 +76,7 @@ pub fn new_template(name: &str) -> Result<(), AppError> {
     let path = get_template_path(name)?;
     if path.exists() {
         return Err(AppError::InvalidArgument(format!(
-            "Template '{}' already exists. Use 'rtmpl template edit {}' to edit it.",
+            "Template '{}' already exists. Use 'runtpl template edit {}' to edit it.",
             name, name
         )));
     }
@@ -101,7 +101,7 @@ pub fn edit_template(name: &str) -> Result<(), AppError> {
     let path = get_template_path(name)?;
     if !path.exists() {
         return Err(AppError::InvalidArgument(format!(
-            "Template '{}' not found. Use 'rtmpl template new {}' to create it.",
+            "Template '{}' not found. Use 'runtpl template new {}' to create it.",
             name, name
         )));
     }
@@ -117,7 +117,7 @@ pub fn remove_template(name: &str) -> Result<(), AppError> {
     let path = get_template_path(name)?;
     if !path.exists() {
         return Err(AppError::InvalidArgument(format!(
-            "Template '{}' not found. Use 'rtmpl template list' to see available templates.",
+            "Template '{}' not found. Use 'runtpl template list' to see available templates.",
             name
         )));
     }

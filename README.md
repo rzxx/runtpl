@@ -1,8 +1,8 @@
-# rtmpl (Run Template)
+# runtpl (Run Template)
 
 A powerful command-line interface (CLI) tool for automating the creation of AI prompts, code snippets, configuration files, and more, using a flexible templating engine. Define your templates once, then dynamically generate content by injecting data from various sources.
 
-`rtmpl` streamlines repetitive text generation tasks, making it ideal for developers, AI engineers, and anyone who frequently generates structured text.
+`runtpl` streamlines repetitive text generation tasks, making it ideal for developers, AI engineers, and anyone who frequently generates structured text.
 
 ## Features
 
@@ -11,7 +11,7 @@ A powerful command-line interface (CLI) tool for automating the creation of AI p
 * **Multiple Data Input Methods:**
   * **CLI Arguments:** Pass key-value pairs directly (e.g., `key=value`, `key=item1,item2`).
   * **File Input:** Load data from local files (e.g., `key@=path/to/data.json`).
-  * **Stdin Input:** Pipe data from standard input (e.g., `cat data.json | rtmpl run my_template data@-`).
+  * **Stdin Input:** Pipe data from standard input (e.g., `cat data.json | runtpl run my_template data@-`).
 * **Interactive Mode:** Automatically extracts variables from your template and opens an editor to prompt for values in a structured JSON format.
 * **Clipboard Integration:** Automatically copies the rendered output to your system clipboard (configurable).
 * **Template Management:** Commands to list, create, edit, and remove templates stored globally.
@@ -26,14 +26,14 @@ A powerful command-line interface (CLI) tool for automating the creation of AI p
 ### Install from Cargo
 
 ```bash
-cargo install rtmpl
+cargo install runtpl
 ```
 
-This will compile `rtmpl` and place the executable in your Cargo bin directory (usually `~/.cargo/bin`), which should be in your system's PATH.
+This will compile `runtpl` and place the executable in your Cargo bin directory (usually `~/.cargo/bin`), which should be in your system's PATH.
 
 ## Usage
 
-### `rtmpl run <template_name> [args...]`
+### `runtpl run <template_name> [args...]`
 
 Renders a template with provided data.
 
@@ -47,70 +47,70 @@ Renders a template with provided data.
 2. **`key@=filepath`**: Reads the content of `filepath` and assigns it to `key`. The content will be parsed as JSON if valid, otherwise as a plain string.
     * Example: `code@=src/main.rs`, `config@=config.json`
 3. **`key@-`**: Reads the content from standard input (`stdin`) and assigns it to `key`. The content will be parsed as JSON if valid, otherwise as a plain string. Only one `key@-` argument is allowed per run.
-    * Example: `cat my_data.json | rtmpl run my_template data@-`
+    * Example: `cat my_data.json | runtpl run my_template data@-`
 
 #### Options
 
-* `-i`, `--interactive`: Enter interactive mode. `rtmpl` will analyze the template, create a JSON scaffold of expected variables, open your default editor for you to fill them, and then render the template with the provided data. Cannot be used with `[args...]`.
+* `-i`, `--interactive`: Enter interactive mode. `runtpl` will analyze the template, create a JSON scaffold of expected variables, open your default editor for you to fill them, and then render the template with the provided data. Cannot be used with `[args...]`.
 * `-n`, `--no-copy`: Do not copy the rendered output to the system clipboard. By default, output is copied.
 
 #### Examples
 
 ```bash
 # Basic usage with direct arguments
-rtmpl run my_prompt name=John description="a powerful CLI tool"
+runtpl run my_prompt name=John description="a powerful CLI tool"
 
 # Passing data from a JSON file
-rtmpl run generate_config settings@=app_settings.json
+runtpl run generate_config settings@=app_settings.json
 
 # Passing data via stdin
-echo '{"message": "Hello from stdin!"}' | rtmpl run simple_template data@-
+echo '{"message": "Hello from stdin!"}' | runtpl run simple_template data@-
 
 # Using interactive mode to fill variables
-rtmpl run complex_ai_prompt --interactive
+runtpl run complex_ai_prompt --interactive
 
 # Render without copying to clipboard
-rtmpl run my_template var=value --no-copy
+runtpl run my_template var=value --no-copy
 ```
 
-### `rtmpl template <command>`
+### `runtpl template <command>`
 
 Manages your globally stored templates.
 
 * Templates are stored in your configuration directory:
-  * **Linux:** `~/.config/rtmpl/templates/`
-  * **macOS:** `~/Library/Application Support/rtmpl/templates/`
-  * **Windows:** `%APPDATA%\rtmpl\templates\`
+  * **Linux:** `~/.config/runtpl/templates/`
+  * **macOS:** `~/Library/Application Support/runtpl/templates/`
+  * **Windows:** `%APPDATA%\runtpl\templates\`
 
 #### Commands
 
 * **`list`**: Lists all available templates in the global template directory.
 
     ```bash
-    rtmpl template list
+    runtpl template list
     ```
 
 * **`new <name>`**: Creates a new empty template file with the given name and opens it in your default editor. If the file is left empty, it will be discarded.
 
     ```bash
-    rtmpl template new my_ai_prompt
+    runtpl template new my_ai_prompt
     ```
 
 * **`edit <name>`**: Opens an existing template file in your default editor.
 
     ```bash
-    rtmpl template edit my_ai_prompt
+    runtpl template edit my_ai_prompt
     ```
 
 * **`remove <name>`**: Deletes an existing template file after a confirmation prompt.
 
     ```bash
-    rtmpl template remove old_template
+    runtpl template remove old_template
     ```
 
 ## Template Syntax
 
-`rtmpl` uses a simple, yet powerful, templating syntax inspired by popular templating engines.
+`runtpl` uses a simple, yet powerful, templating syntax inspired by popular templating engines.
 
 ### Variables
 
@@ -176,7 +176,7 @@ Content:
 
 ## Built-in Functions
 
-`rtmpl` provides built-in functions that can be used as `collection_source` in `foreach` loops.
+`runtpl` provides built-in functions that can be used as `collection_source` in `foreach` loops.
 
 ### `files(source, recursive, exclude_names, exclude_paths)`
 
